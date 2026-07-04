@@ -1,0 +1,54 @@
+services:
+  proxy:
+    build: ./proxy
+    restart: unless-stopped
+    ports:
+      - "${PROXY_PORT:-3128}:3128"
+    volumes:
+      - ./data:/data
+    environment:
+      PROXY_PORT: "3128"
+      PROXY_PASSWD_PATH: /data/3proxy.passwd
+
+  portal:
+    build: ./portal
+    restart: unless-stopped
+    expose:
+      - "3000"
+    volumes:
+      - ./data:/data
+    environment:
+      GITHUB_CLIENT_ID: ${GITHUB_CLIENT_ID}
+      GITHUB_CLIENT_SECRET: ${GITHUB_CLIENT_SECRET}
+      GITHUB_SPONSOR_LOGIN: ${GITHUB_SPONSOR_LOGIN:-zortos293}
+      GITHUB_TOKEN: ${GITHUB_TOKEN}
+      PORTAL_SESSION_SECRET: ${PORTAL_SESSION_SECRET}
+      PORTAL_PUBLIC_URL: ${PORTAL_PUBLIC_URL}
+      PORTAL_PORT: "3000"
+      PROXY_PORT: ${PROXY_PORT:-3128}
+      PROXY_PUBLIC_HOST: ${PROXY_PUBLIC_HOST}
+      DATABASE_PATH: ${DATABASE_PATH:-/data/opennow-proxy.json}
+      PROXY_PASSWD_PATH: ${PROXY_PASSWD_PATH:-/data/3proxy.passwd}
+      SYNC_INTERVAL_HOURS: ${SYNC_INTERVAL_HOURS:-12}
+    depends_on:
+      - proxy
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - "443:443"
+      - "80:80"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    environment:
+      CADDY_DOMAIN: ${CADDY_DOMAIN}
+      CADDY_EMAIL: ${CADDY_EMAIL}
+    depends_on:
+      - portal
+
+volumes:
+  caddy_data:
+  caddy_config:

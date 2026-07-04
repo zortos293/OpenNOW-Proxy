@@ -1,0 +1,43 @@
+function required(name: string): string {
+  const value = process.env[name]?.trim();
+  if (!value) {
+    throw new Error(`Missing required environment variable: ${name}`);
+  }
+  return value;
+}
+
+function optional(name: string, fallback: string): string {
+  return process.env[name]?.trim() || fallback;
+}
+
+function optionalInt(name: string, fallback: number): number {
+  const raw = process.env[name]?.trim();
+  if (!raw) return fallback;
+  const parsed = Number.parseInt(raw, 10);
+  return Number.isFinite(parsed) ? parsed : fallback;
+}
+
+export const config = {
+  githubClientId: required("GITHUB_CLIENT_ID"),
+  githubClientSecret: required("GITHUB_CLIENT_SECRET"),
+  githubSponsorLogin: optional("GITHUB_SPONSOR_LOGIN", "zortos293"),
+  githubToken: process.env.GITHUB_TOKEN?.trim() || "",
+  portalSessionSecret: required("PORTAL_SESSION_SECRET"),
+  portalPublicUrl: required("PORTAL_PUBLIC_URL").replace(/\/$/, ""),
+  portalPort: optionalInt("PORTAL_PORT", 3000),
+  proxyPort: optionalInt("PROXY_PORT", 3128),
+  proxyPublicHost: required("PROXY_PUBLIC_HOST"),
+  databasePath: optional("DATABASE_PATH", "/data/opennow-proxy.json"),
+  proxyPasswdPath: optional("PROXY_PASSWD_PATH", "/data/3proxy.passwd"),
+  syncIntervalHours: optionalInt("SYNC_INTERVAL_HOURS", 12),
+};
+
+export function buildProxyUrl(username: string, password: string): string {
+  const encodedUser = encodeURIComponent(username);
+  const encodedPass = encodeURIComponent(password);
+  return `http://${encodedUser}:${encodedPass}@${config.proxyPublicHost}:${config.proxyPort}`;
+}
+
+export function sponsorPageUrl(): string {
+  return `https://github.com/sponsors/${config.githubSponsorLogin}`;
+}

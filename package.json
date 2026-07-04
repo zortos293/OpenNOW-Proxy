@@ -1,0 +1,7 @@
+{
+  "name": "opennow-proxy",
+  "private": true,
+  "scripts": {
+    "smoke-test": "node scripts/smoke-test.mjs"
+  }
+}
