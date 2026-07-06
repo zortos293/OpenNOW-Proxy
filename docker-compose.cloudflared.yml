@@ -4,11 +4,11 @@
 services:
   portal:
     ports:
-      - "127.0.0.1:${PORTAL_PORT:-3000}:3000"
+      - "127.0.0.1:3010:3000"
 
   proxy:
     ports:
-      - "127.0.0.1:${PROXY_PORT:-3128}:3128"
+      - "127.0.0.1:3128:3128"
 
   caddy:
     profiles:
