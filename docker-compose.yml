@@ -2,8 +2,8 @@ services:
   proxy:
     build: ./proxy
     restart: unless-stopped
-    ports:
-      - "${PROXY_PORT:-3128}:3128"
+    expose:
+      - "3128"
     volumes:
       - ./data:/data
     environment:

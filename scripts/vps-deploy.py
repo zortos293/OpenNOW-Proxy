@@ -53,8 +53,8 @@ for path in [Path('/etc/cloudflared/config.yml'), Path('/root/.cloudflared/confi
 
     commands = [
         "test -d /opt/OpenNOW-Proxy/.git || git clone https://github.com/zortos293/OpenNOW-Proxy.git /opt/OpenNOW-Proxy",
-        "cd /opt/OpenNOW-Proxy && git pull || true",
-        f"""cat > /opt/OpenNOW-Proxy/.env << 'EOF'
+        "cd /opt/OpenNOW-Proxy && git pull",
+        f"""if [ ! -f /opt/OpenNOW-Proxy/.env ]; then cat > /opt/OpenNOW-Proxy/.env << 'EOF'
 ADMIN_USERNAME=admin
 ADMIN_PASSWORD={admin_pass}
 PORTAL_SESSION_SECRET={session_secret}
@@ -64,8 +64,13 @@ PROXY_PUBLIC_HOST={PROXY_TCP}
 PROXY_PORT=443
 DATABASE_PATH=/data/opennow-proxy.json
 PROXY_PASSWD_PATH=/data/3proxy.passwd
-EOF""",
-        "chmod 600 /opt/OpenNOW-Proxy/.env",
+EOF
+chmod 600 /opt/OpenNOW-Proxy/.env
+else
+sed -i 's|^PORTAL_PUBLIC_URL=.*|PORTAL_PUBLIC_URL=https://{PORTAL}|' /opt/OpenNOW-Proxy/.env
+sed -i 's|^PROXY_PUBLIC_HOST=.*|PROXY_PUBLIC_HOST={PROXY_TCP}|' /opt/OpenNOW-Proxy/.env
+sed -i 's|^PROXY_PORT=.*|PROXY_PORT=443|' /opt/OpenNOW-Proxy/.env
+fi""",
         """cat > /opt/OpenNOW-Proxy/docker-compose.vps.yml << 'EOF'
 services:
   portal:
@@ -104,8 +109,8 @@ EOF""",
 
     print("\n=== DONE ===")
     print(f"Admin panel: https://{PORTAL}/admin")
-    print(f"Admin login: admin / {admin_pass}")
     print(f"Proxy host:  {PROXY_TCP}:443")
+    print("Admin password is in /opt/OpenNOW-Proxy/.env on the VPS (ADMIN_PASSWORD).")
     print("Create users in admin panel, then use OpenNOW URLs from the table.")
     client.close()
 
