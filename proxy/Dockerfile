@@ -1,5 +1,5 @@
 FROM alpine:3.20 AS build
-RUN apk add --no-cache build-base git
+RUN apk add --no-cache build-base git openssl-dev
 RUN git clone --depth 1 https://github.com/3proxy/3proxy.git /src/3proxy
 WORKDIR /src/3proxy
 RUN make -f Makefile.Linux && strip bin/3proxy
