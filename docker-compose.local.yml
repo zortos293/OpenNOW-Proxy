@@ -1,0 +1,15 @@
+# Bind portal + proxy to localhost for an external cloudflared (PM2/systemd on the host).
+# Use with: docker compose -f docker-compose.yml -f docker-compose.local.yml up -d --build
+
+services:
+  portal:
+    ports:
+      - "127.0.0.1:${PORTAL_PORT:-3000}:3000"
+
+  proxy:
+    ports:
+      - "127.0.0.1:${PROXY_PORT:-3128}:3128"
+
+  caddy:
+    profiles:
+      - disabled

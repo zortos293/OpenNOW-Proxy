@@ -1,0 +1,26 @@
+# Use with: docker compose -f docker-compose.yml -f docker-compose.cloudflared.yml up -d --build
+# Skips Caddy — expose portal + proxy through Cloudflare Tunnel instead.
+
+services:
+  portal:
+    ports:
+      - "127.0.0.1:${PORTAL_PORT:-3000}:3000"
+
+  proxy:
+    ports:
+      - "127.0.0.1:${PROXY_PORT:-3128}:3128"
+
+  caddy:
+    profiles:
+      - disabled
+
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    restart: unless-stopped
+    command: tunnel --no-autoupdate run
+    environment:
+      TUNNEL_TOKEN: ${CLOUDFLARE_TUNNEL_TOKEN}
+    depends_on:
+      - portal
+      - proxy
+    network_mode: host

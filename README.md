@@ -45,6 +45,8 @@ docker compose up -d --build
 
 Uses Docker Compose only — PM2 is not required.
 
+**Using Cloudflare Tunnel (`cloudflared`)?** See **[docs/DEPLOY-CLOUDFLARED.md](docs/DEPLOY-CLOUDFLARED.md)** — skip Caddy and open ports 443/80.
+
 ## Operations
 
 ### Health check

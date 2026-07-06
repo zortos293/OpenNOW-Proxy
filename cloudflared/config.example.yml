@@ -1,0 +1,21 @@
+# Example cloudflared config (config-file mode).
+# Most users should use a Tunnel Token from the Cloudflare dashboard instead.
+#
+#   cloudflared tunnel --config cloudflared/config.example.yml run
+#
+# Replace tunnel ID, credentials path, and hostnames.
+
+tunnel: YOUR_TUNNEL_UUID
+credentials-file: /etc/cloudflared/YOUR_TUNNEL_UUID.json
+
+ingress:
+  # Sponsor portal (GitHub OAuth)
+  - hostname: opennow-proxy.example.com
+    service: http://127.0.0.1:3000
+
+  # OpenNOW session forward proxy (HTTP CONNECT)
+  # Create this as a TCP public hostname in Zero Trust, or use the block below.
+  - hostname: opennow-proxy-tcp.example.com
+    service: tcp://127.0.0.1:3128
+
+  - service: http_status:404
