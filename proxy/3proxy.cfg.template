@@ -1,5 +1,4 @@
 # OpenNOW session proxy — NVIDIA/GFN domains only (deny-by-default)
-daemon
 pidfile /var/run/3proxy.pid
 nscache 65536
 nserver 1.1.1.1
