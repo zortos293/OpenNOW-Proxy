@@ -1,6 +1,6 @@
 # OpenNOW Session Proxy
 
-Domain-restricted HTTP forward proxy for [OpenNOW](https://github.com/OpenCloudGaming/OpenNOW) session API traffic. Access is gated by **GitHub Sponsors** of [`zortos293`](https://github.com/sponsors/zortos293).
+Domain-restricted HTTP forward proxy for [OpenNOW](https://github.com/OpenCloudGaming/OpenNOW) session API traffic. Manage fixed username/password credentials from a simple **admin panel**.
 
 The proxy only forwards traffic to:
 
@@ -14,81 +14,61 @@ Everything else is denied. Streaming, signaling, and NVIDIA login traffic remain
 | Service | Port | Role |
 |---|---|---|
 | `proxy` | 3128 | 3proxy forward proxy with domain ACL + basic auth |
-| `portal` | 3000 (internal) | GitHub OAuth, sponsor verification, credential UI |
-| `caddy` | 443 / 80 | TLS termination for the portal |
+| `portal` | 3000 (internal) | Admin panel to create/delete proxy users |
+| `caddy` | 443 / 80 | TLS termination for the portal (optional with cloudflared) |
 
-## OpenNOW setup (users)
+## Admin panel
 
-1. Sponsor [`zortos293` on GitHub](https://github.com/sponsors/zortos293)
-2. Visit your portal URL (for example `https://proxy.opennow.example.com`)
-3. Sign in with GitHub and copy the session proxy URL
-4. In OpenNOW: **Settings → Video → Session proxy** → enable and paste the URL
+1. Open `https://YOUR_DOMAIN/admin`
+2. Sign in with `ADMIN_USERNAME` / `ADMIN_PASSWORD` from `.env`
+3. Create a proxy username and fixed password
+4. Copy the generated OpenNOW URL for each user
 
-Example URL format:
+Example OpenNOW URL:
 
 ```text
-http://sponsor_123456:generated-password@proxy.opennow.example.com:3128
+http://myuser:myfixedpass@proxy.example.com:3128
 ```
+
+Paste into OpenNOW → **Settings → Video → Session proxy**.
 
 ## VPS deployment
 
-Full step-by-step guide: **[docs/DEPLOY.md](docs/DEPLOY.md)**
+- Standard VPS: **[docs/DEPLOY.md](docs/DEPLOY.md)**
+- Cloudflare Tunnel: **[docs/DEPLOY-CLOUDFLARED.md](docs/DEPLOY-CLOUDFLARED.md)**
 
 Quick start:
 
 ```bash
 git clone https://github.com/zortos293/OpenNOW-Proxy.git
 cd OpenNOW-Proxy
-cp .env.example .env   # fill in secrets
+cp .env.example .env   # set ADMIN_* and PROXY_PUBLIC_HOST
 docker compose up -d --build
 ```
 
-Uses Docker Compose only — PM2 is not required.
+## Environment variables
 
-**Using Cloudflare Tunnel (`cloudflared`)?** See **[docs/DEPLOY-CLOUDFLARED.md](docs/DEPLOY-CLOUDFLARED.md)** — skip Caddy and open ports 443/80.
+| Variable | Purpose |
+|---|---|
+| `ADMIN_USERNAME` | Admin panel login |
+| `ADMIN_PASSWORD` | Admin panel login |
+| `PORTAL_SESSION_SECRET` | Signs admin session cookie |
+| `PROXY_PUBLIC_HOST` | Hostname or IP in OpenNOW proxy URLs |
+| `PROXY_PORT` | Port in OpenNOW proxy URLs (3128 or 443 via Cloudflare TCP) |
 
 ## Operations
 
-### Health check
-
 ```bash
 curl https://YOUR_DOMAIN/health
-```
-
-### Manual sponsor sync
-
-Triggers a maintainer-side sponsor list sync and passwd regeneration:
-
-```bash
-curl -X POST https://YOUR_DOMAIN/admin/sync \
-  -H "x-admin-token: YOUR_PORTAL_SESSION_SECRET"
-```
-
-The sync job also runs automatically every `SYNC_INTERVAL_HOURS` (default 12).
-
-### Logs
-
-```bash
-docker compose logs -f proxy portal caddy
+docker compose logs -f proxy portal
 ```
 
 ## Security notes
 
 - Deny-by-default domain ACL prevents open-relay abuse
-- Proxy credentials are per GitHub account and rotated on each successful sponsor login
-- OAuth tokens are not stored; only proxy credentials persist in a JSON database on the shared volume
-- Do not commit `.env` or share generated proxy passwords
-- Proxy logs should not include `Authorization` headers or passwords
-
-## Development
-
-```bash
-cd portal
-npm install
-npm run dev
-```
-
-Local proxy testing requires the Docker `proxy` service or a local 3proxy instance writing to `./data/3proxy.passwd`.
+- Protect the admin panel URL — use HTTPS (Caddy or cloudflared)
+- Use strong `ADMIN_PASSWORD` and `PORTAL_SESSION_SECRET`
+- Do not commit `.env`
 
 ## License
 

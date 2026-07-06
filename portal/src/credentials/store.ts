@@ -5,12 +5,10 @@ import path from "node:path";
 import { config } from "../config.js";
 
 export interface CredentialRecord {
-  githubId: number;
-  githubLogin: string;
-  proxyUsername: string;
-  proxyPassword: string;
-  sponsorTier: string | null;
-  active: number;
+  id: string;
+  username: string;
+  password: string;
+  active: boolean;
   createdAt: string;
   updatedAt: string;
 }
@@ -22,6 +20,8 @@ interface CredentialDatabase {
 const dbPath = config.databasePath.endsWith(".json")
   ? config.databasePath
   : `${config.databasePath}.json`;
+
+const USERNAME_PATTERN = /^[a-zA-Z0-9_-]{3,32}$/;
 
 function readDatabase(): CredentialDatabase {
   fs.mkdirSync(path.dirname(dbPath), { recursive: true });
@@ -46,84 +46,77 @@ function nowIso(): string {
   return new Date().toISOString();
 }
 
-function randomPassword(): string {
-  return crypto.randomBytes(24).toString("base64url");
+export function validateUsername(username: string): string | null {
+  const trimmed = username.trim();
+  if (!USERNAME_PATTERN.test(trimmed)) {
+    return "Username must be 3-32 characters (letters, numbers, _ or -).";
+  }
+  return null;
 }
 
-function proxyUsernameForGithubId(githubId: number): string {
-  return `sponsor_${githubId}`;
+export function validatePassword(password: string): string | null {
+  if (password.length < 4) {
+    return "Password must be at least 4 characters.";
+  }
+  if (password.length > 128) {
+    return "Password must be at most 128 characters.";
+  }
+  return null;
 }
 
-export function upsertSponsorCredential(input: {
-  githubId: number;
-  githubLogin: string;
-  sponsorTier: string | null;
-  rotatePassword?: boolean;
-}): CredentialRecord {
+export function createCredential(username: string, password: string): CredentialRecord {
+  const usernameError = validateUsername(username);
+  if (usernameError) throw new Error(usernameError);
+
+  const passwordError = validatePassword(password);
+  if (passwordError) throw new Error(passwordError);
+
   const database = readDatabase();
-  const existing = database.credentials.find((record) => record.githubId === input.githubId);
-  const timestamp = nowIso();
-  const proxyUsername = proxyUsernameForGithubId(input.githubId);
-  const proxyPassword =
-    existing && !input.rotatePassword ? existing.proxyPassword : randomPassword();
+  const normalizedUsername = username.trim();
+  const exists = database.credentials.some(
+    (record) => record.active && record.username.toLowerCase() === normalizedUsername.toLowerCase(),
+  );
+  if (exists) {
+    throw new Error("An active user with this username already exists.");
+  }
 
-  const nextRecord: CredentialRecord = {
-    githubId: input.githubId,
-    githubLogin: input.githubLogin,
-    proxyUsername,
-    proxyPassword,
-    sponsorTier: input.sponsorTier,
-    active: 1,
-    createdAt: existing?.createdAt ?? timestamp,
+  const timestamp = nowIso();
+  const record: CredentialRecord = {
+    id: crypto.randomUUID(),
+    username: normalizedUsername,
+    password,
+    active: true,
+    createdAt: timestamp,
     updatedAt: timestamp,
   };
 
-  if (existing) {
-    database.credentials = database.credentials.map((record) =>
-      record.githubId === input.githubId ? nextRecord : record,
-    );
-  } else {
-    database.credentials.push(nextRecord);
-  }
-
+  database.credentials.push(record);
   writeDatabase(database);
-  return nextRecord;
+  return record;
 }
 
-export function getCredentialByGithubId(githubId: number): CredentialRecord | null {
-  return readDatabase().credentials.find((record) => record.githubId === githubId) ?? null;
+export function listAllCredentials(): CredentialRecord[] {
+  return readDatabase()
+    .credentials.filter((record) => record.active)
+    .sort((left, right) => left.username.localeCompare(right.username));
 }
 
 export function listActiveCredentials(): CredentialRecord[] {
-  return readDatabase()
-    .credentials.filter((record) => record.active === 1)
-    .sort((left, right) => left.githubLogin.localeCompare(right.githubLogin));
+  return listAllCredentials();
 }
 
-export function deactivateCredential(githubId: number): void {
+export function deleteCredential(id: string): boolean {
   const database = readDatabase();
-  database.credentials = database.credentials.map((record) =>
-    record.githubId === githubId
-      ? { ...record, active: 0, updatedAt: nowIso() }
-      : record,
-  );
+  const index = database.credentials.findIndex((record) => record.id === id && record.active);
+  if (index === -1) return false;
+
+  database.credentials[index] = {
+    ...database.credentials[index],
+    active: false,
+    updatedAt: nowIso(),
+  };
   writeDatabase(database);
-}
-
-export function deactivateAllExcept(githubIds: number[]): void {
-  const allowed = new Set(githubIds);
-  const database = readDatabase();
-  const timestamp = nowIso();
-
-  database.credentials = database.credentials.map((record) => {
-    if (record.active !== 1) return record;
-    if (allowed.size === 0 || !allowed.has(record.githubId)) {
-      return { ...record, active: 0, updatedAt: timestamp };
-    }
-    return record;
-  });
-
-  writeDatabase(database);
+  return true;
 }
 
 export function countActiveCredentials(): number {

@@ -1,38 +1,19 @@
 # OpenNOW End-to-End Test Checklist
 
-Run this after deploying the VPS stack and obtaining sponsor credentials from the portal.
+## Setup
 
-## Prerequisites
+1. Create a proxy user in the admin panel (`/admin`)
+2. Copy the OpenNOW URL from the users table
+3. OpenNOW → **Settings → Video** → enable **Session proxy** → paste URL
 
-- Active GitHub Sponsorship of `zortos293`
-- Proxy URL copied from the portal dashboard
-- OpenNOW installed locally
+## Verify
 
-## Steps
-
-1. Open OpenNOW → **Settings → Video**
-2. Enable **Session proxy**
-3. Paste the full proxy URL (`http://user:pass@host:3128`)
-4. Save settings and restart OpenNOW if prompted
-
-## Verify proxied traffic
-
-- [ ] Game catalog loads without errors
+- [ ] Game catalog loads
 - [ ] Library / featured games load
-- [ ] Session creation succeeds for a test title
-- [ ] Queue polling works if applicable to your tier
-
-## Verify direct traffic (not proxied)
-
-- [ ] NVIDIA login still works
-- [ ] Game streaming starts after session creation
-- [ ] Signaling/WebRTC connects (stream video/audio present)
-
-## Proxy enforcement
-
-- [ ] Smoke test script passes against the VPS proxy
-- [ ] Non-NVIDIA domains are rejected through the proxy
+- [ ] Session creation works
+- [ ] Streaming still works (direct, not proxied)
+- [ ] Smoke test script passes
 
 ## Notes
 
-OpenNOW intentionally skips background catalog cache refresh when a credentialed proxy is configured. This is expected behavior.
+OpenNOW skips background catalog cache refresh when the proxy URL includes credentials. This is expected.

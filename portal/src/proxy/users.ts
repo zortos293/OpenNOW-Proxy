@@ -6,7 +6,7 @@ import { listActiveCredentials } from "../credentials/store.js";
 
 export function renderPasswdFile(): string {
   const lines = listActiveCredentials().map(
-    (record) => `${record.proxyUsername}:CL:${record.proxyPassword}`,
+    (record) => `${record.username}:CL:${record.password}`,
   );
   return lines.length > 0 ? `${lines.join("\n")}\n` : "";
 }
