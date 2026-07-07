@@ -9,7 +9,7 @@ RUN apk add --no-cache ca-certificates gettext
 COPY --from=build /src/3proxy/bin/3proxy /usr/bin/3proxy
 COPY 3proxy.cfg.template /etc/3proxy/3proxy.cfg.template
 COPY entrypoint.sh /entrypoint.sh
-RUN chmod +x /entrypoint.sh
+RUN sed -i 's/\r$//' /entrypoint.sh && chmod +x /entrypoint.sh
 EXPOSE 3128
 VOLUME ["/data"]
 ENTRYPOINT ["/entrypoint.sh"]

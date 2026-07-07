@@ -7,7 +7,7 @@ nserver 8.8.8.8
 log /dev/stdout D
 logformat "L%t.%. %N.%p %E %U %C:%c %R:%r %O %I %h %T"
 
-users ${PROXY_PASSWD_PATH}
+users $${PROXY_PASSWD_PATH}
 auth strong
 allow * * games.geforce.com
 allow * * apps.gxn.nvidia.com

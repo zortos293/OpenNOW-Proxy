@@ -2,6 +2,8 @@
 
 Use this when the **admin panel** is exposed through Cloudflare Tunnel. See also [DEPLOY.md](./DEPLOY.md).
 
+Cloudflare Tunnel can proxy **HTTP/HTTPS** hostnames to local services. It **cannot** expose a standard HTTP forward proxy on a public hostname — TCP tunnel routes require `cloudflared access tcp` on every client machine. For OpenNOW, expose the proxy directly on VPS port **3128** and only tunnel the admin panel.
+
 ## `.env` (example)
 
 ```env
@@ -11,43 +13,59 @@ PORTAL_SESSION_SECRET=...
 
 PORTAL_PUBLIC_URL=https://opennow-proxy.yourdomain.com
 PROXY_PUBLIC_HOST=opennow-proxy-tcp.yourdomain.com
-PROXY_PORT=443
+PROXY_PORT=3128
 
 CLOUDFLARE_TUNNEL_TOKEN=eyJh...
 ```
 
-## Host cloudflared (PM2) + Docker apps
+## Recommended: admin on tunnel, proxy direct
 
-**1. Start proxy + portal on localhost:**
+**1. Start proxy + portal on the VPS:**
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.vps.yml up -d --build
+```
+
+This binds the portal to `127.0.0.1:3010` and the proxy to `0.0.0.0:3128`.
+
+**2. Tunnel ingress (admin only):**
+
+```yaml
+ingress:
+  - hostname: opennow-proxy.yourdomain.com
+    service: http://127.0.0.1:3010
+  - service: http_status:404
+```
+
+Or configure the same hostname in Zero Trust → Tunnels → Public Hostname (HTTP → `http://127.0.0.1:3010`).
+
+**3. DNS for the proxy hostname (not via tunnel):**
+
+- Add **A** record: `opennow-proxy-tcp.yourdomain.com` → your VPS IP
+- Set proxy status to **DNS only** (gray cloud)
+- Open firewall port `3128/tcp` on the VPS
+
+**4. Restart cloudflared** (if using a local config file; token-managed tunnels pick up dashboard changes automatically):
+
+```bash
+systemctl restart cloudflared
+```
+
+**5. Admin panel:** `https://opennow-proxy.yourdomain.com/admin`
+
+**6. OpenNOW URL format:**
+
+```text
+http://user:pass@opennow-proxy-tcp.yourdomain.com:3128
+```
+
+## Local dev / bind to localhost only
 
 ```bash
 docker compose -f docker-compose.yml -f docker-compose.local.yml up -d --build
 ```
 
-**2. Tunnel ingress:**
-
-```yaml
-ingress:
-  - hostname: opennow-proxy.yourdomain.com
-    service: http://127.0.0.1:3000
-  - hostname: opennow-proxy-tcp.yourdomain.com
-    service: tcp://127.0.0.1:3128
-  - service: http_status:404
-```
-
-**3. Restart cloudflared:**
-
-```bash
-pm2 restart cloudflared
-```
-
-**4. Admin panel:** `https://opennow-proxy.yourdomain.com/admin`
-
-**5. OpenNOW URL format:**
-
-```text
-http://user:pass@opennow-proxy-tcp.yourdomain.com:443
-```
+Use this when cloudflared on the host forwards to `127.0.0.1:3010` and the proxy is exposed separately.
 
 ## Docker cloudflared
 
@@ -55,13 +73,13 @@ http://user:pass@opennow-proxy-tcp.yourdomain.com:443
 docker compose -f docker-compose.yml -f docker-compose.cloudflared.yml up -d --build
 ```
 
-Configure the same two public hostnames in Zero Trust pointing to `127.0.0.1:3000` and `tcp://127.0.0.1:3128`.
+Tunnel only the admin panel hostname. Do not route the proxy through Cloudflare TCP.
 
-## Hybrid (portal on tunnel, proxy direct)
+## Direct IP (no DNS for proxy)
 
 ```env
 PROXY_PUBLIC_HOST=YOUR_VPS_IP
 PROXY_PORT=3128
 ```
 
-Only tunnel the admin panel hostname to `http://127.0.0.1:3000`. Open port 3128 on the VPS.
+Only tunnel the admin panel hostname to `http://127.0.0.1:3010`. Open port 3128 on the VPS.

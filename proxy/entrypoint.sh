@@ -14,20 +14,38 @@ fi
 export PROXY_PORT PROXY_PASSWD_PATH
 envsubst '${PROXY_PORT} ${PROXY_PASSWD_PATH}' < /etc/3proxy/3proxy.cfg.template > /etc/3proxy/3proxy.cfg
 
-watch_passwd() {
-  last_hash=""
-  while true; do
-    if [ -f "$PROXY_PASSWD_PATH" ]; then
-      current_hash=$(md5sum "$PROXY_PASSWD_PATH" | awk '{print $1}')
-      if [ -n "$last_hash" ] && [ "$current_hash" != "$last_hash" ] && [ -f /var/run/3proxy.pid ]; then
-        kill -HUP "$(cat /var/run/3proxy.pid)" 2>/dev/null || true
-      fi
-      last_hash="$current_hash"
-    fi
-    sleep 2
-  done
+proxy_pid=""
+
+start_proxy() {
+  if [ -n "$proxy_pid" ]; then
+    kill -TERM "$proxy_pid" 2>/dev/null || true
+    wait "$proxy_pid" 2>/dev/null || true
+  fi
+
+  /usr/bin/3proxy /etc/3proxy/3proxy.cfg &
+  proxy_pid=$!
+  echo "$proxy_pid" > /var/run/3proxy.pid
 }
 
-watch_passwd &
+last_passwd_hash=""
+check_passwd_reload() {
+  if [ ! -f "$PROXY_PASSWD_PATH" ]; then
+    return
+  fi
 
-exec /usr/bin/3proxy /etc/3proxy/3proxy.cfg
+  current_hash=$(md5sum "$PROXY_PASSWD_PATH" | awk '{print $1}')
+  if [ -n "$last_passwd_hash" ] && [ "$current_hash" != "$last_passwd_hash" ]; then
+    start_proxy
+  fi
+  last_passwd_hash="$current_hash"
+}
+
+start_proxy
+
+while true; do
+  check_passwd_reload
+  if ! kill -0 "$proxy_pid" 2>/dev/null; then
+    start_proxy
+  fi
+  sleep 2
+done
