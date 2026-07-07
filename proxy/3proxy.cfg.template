@@ -10,7 +10,9 @@ logformat "L%t.%. %N.%p %E %U %C:%c %R:%r %O %I %h %T"
 users ${PROXY_PASSWD_PATH}
 auth strong
 allow * * games.geforce.com
+allow * * apps.gxn.nvidia.com
 allow * * *.nvidiagrid.net
+allow * * *.geforcenow.nvidiagrid.net
 deny * *
 
 proxy -p${PROXY_PORT} -a
