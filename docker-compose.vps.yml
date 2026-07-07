@@ -1,0 +1,13 @@
+# Portal stays on localhost for cloudflared; proxy is public on 3128.
+services:
+  portal:
+    ports:
+      - "127.0.0.1:3010:3000"
+
+  proxy:
+    ports:
+      - "0.0.0.0:3128:3128"
+
+  caddy:
+    profiles:
+      - disabled
