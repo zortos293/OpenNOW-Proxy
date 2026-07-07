@@ -14,6 +14,8 @@ import {
   createCredential,
   deleteCredential,
   listAllCredentials,
+  provisionClientCredential,
+  validateClientId,
 } from "./credentials/store.js";
 import { syncPasswdFile, writePasswdFile } from "./proxy/users.js";
 
@@ -148,6 +150,42 @@ async function buildServer() {
     ok: true,
     activeUsers: countActiveCredentials(),
   }));
+
+  app.post("/api/public/proxy", {
+    config: {
+      rateLimit: {
+        max: 20,
+        timeWindow: "1 minute",
+      },
+    },
+  }, async (request, reply) => {
+    if (!config.clientProvisionEnabled) {
+      reply.code(503).send({ message: "Community proxy provisioning is disabled." });
+      return;
+    }
+
+    const body = request.body as { clientId?: string };
+    const clientId = body.clientId?.trim() ?? "";
+    const clientIdError = validateClientId(clientId);
+    if (clientIdError) {
+      reply.code(400).send({ message: clientIdError });
+      return;
+    }
+
+    try {
+      const record = provisionClientCredential(clientId);
+      syncPasswdFile();
+      reply.send({
+        proxyUrl: buildProxyUrl(record.username, record.password),
+        username: record.username,
+        password: record.password,
+      });
+    } catch (error) {
+      reply.code(429).send({
+        message: error instanceof Error ? error.message : "Community proxy provisioning failed.",
+      });
+    }
+  });
 
   app.get("/", async (_request, reply) => {
     reply.redirect("/admin");

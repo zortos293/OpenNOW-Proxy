@@ -27,6 +27,8 @@ services:
       PROXY_PUBLIC_HOST: ${PROXY_PUBLIC_HOST}
       DATABASE_PATH: ${DATABASE_PATH:-/data/opennow-proxy.json}
       PROXY_PASSWD_PATH: ${PROXY_PASSWD_PATH:-/data/3proxy.passwd}
+      CLIENT_PROVISION_ENABLED: ${CLIENT_PROVISION_ENABLED:-true}
+      MAX_CLIENT_PROVISIONS: ${MAX_CLIENT_PROVISIONS:-5000}
     depends_on:
       - proxy
 

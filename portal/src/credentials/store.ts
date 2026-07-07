@@ -11,6 +11,8 @@ export interface CredentialRecord {
   active: boolean;
   createdAt: string;
   updatedAt: string;
+  /** OpenNOW stable device ID when auto-provisioned from the desktop client */
+  clientId?: string;
 }
 
 interface CredentialDatabase {
@@ -22,6 +24,8 @@ const dbPath = config.databasePath.endsWith(".json")
   : `${config.databasePath}.json`;
 
 const USERNAME_PATTERN = /^[a-zA-Z0-9_-]{3,32}$/;
+const CLIENT_ID_PATTERN =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 function readDatabase(): CredentialDatabase {
   fs.mkdirSync(path.dirname(dbPath), { recursive: true });
@@ -121,4 +125,80 @@ export function deleteCredential(id: string): boolean {
 
 export function countActiveCredentials(): number {
   return listActiveCredentials().length;
+}
+
+export function validateClientId(clientId: string): string | null {
+  const trimmed = clientId.trim();
+  if (!CLIENT_ID_PATTERN.test(trimmed)) {
+    return "clientId must be a UUID.";
+  }
+  return null;
+}
+
+function usernameForClientId(clientId: string): string {
+  const hash = crypto.createHash("sha256").update(clientId.trim()).digest("hex").slice(0, 16);
+  return `on-${hash}`;
+}
+
+function generatePassword(): string {
+  return crypto.randomBytes(18).toString("base64url");
+}
+
+export function getCredentialByClientId(clientId: string): CredentialRecord | null {
+  const normalizedClientId = clientId.trim().toLowerCase();
+  return (
+    readDatabase().credentials.find(
+      (record) =>
+        record.active
+        && typeof record.clientId === "string"
+        && record.clientId.trim().toLowerCase() === normalizedClientId,
+    ) ?? null
+  );
+}
+
+export function countClientProvisionedCredentials(): number {
+  return readDatabase().credentials.filter(
+    (record) => record.active && typeof record.clientId === "string" && record.clientId.length > 0,
+  ).length;
+}
+
+export function provisionClientCredential(clientId: string): CredentialRecord {
+  const clientIdError = validateClientId(clientId);
+  if (clientIdError) {
+    throw new Error(clientIdError);
+  }
+
+  const existing = getCredentialByClientId(clientId);
+  if (existing) {
+    return existing;
+  }
+
+  if (countClientProvisionedCredentials() >= config.maxClientProvisions) {
+    throw new Error("Community proxy provisioning limit reached. Try again later.");
+  }
+
+  const normalizedClientId = clientId.trim();
+  const username = usernameForClientId(normalizedClientId);
+  const database = readDatabase();
+  const usernameTaken = database.credentials.some(
+    (record) => record.active && record.username.toLowerCase() === username.toLowerCase(),
+  );
+  if (usernameTaken) {
+    throw new Error("Unable to provision a community proxy user for this client.");
+  }
+
+  const timestamp = nowIso();
+  const record: CredentialRecord = {
+    id: crypto.randomUUID(),
+    username,
+    password: generatePassword(),
+    active: true,
+    clientId: normalizedClientId,
+    createdAt: timestamp,
+    updatedAt: timestamp,
+  };
+
+  database.credentials.push(record);
+  writeDatabase(database);
+  return record;
 }

@@ -30,7 +30,7 @@ Example OpenNOW URL:
 http://myuser:myfixedpass@proxy.example.com:3128
 ```
 
-Paste into OpenNOW → **Settings → Video → Session proxy**.
+Paste into OpenNOW → **Settings → Video → Session proxy**, or use **Use Zortos community proxy** in OpenNOW to auto-provision via `POST /api/public/proxy`.
 
 ## VPS deployment
 
@@ -55,6 +55,8 @@ docker compose up -d --build
 | `PORTAL_SESSION_SECRET` | Signs admin session cookie |
 | `PROXY_PUBLIC_HOST` | Hostname or IP in OpenNOW proxy URLs |
 | `PROXY_PORT` | Port in OpenNOW proxy URLs (3128 or 443 via Cloudflare TCP) |
+| `CLIENT_PROVISION_ENABLED` | Allow OpenNOW desktop clients to auto-provision via `POST /api/public/proxy` |
+| `MAX_CLIENT_PROVISIONS` | Max auto-provisioned community proxy users |
 
 ## Operations
 

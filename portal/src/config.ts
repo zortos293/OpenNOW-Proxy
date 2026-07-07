@@ -17,6 +17,12 @@ function optionalInt(name: string, fallback: number): number {
   return Number.isFinite(parsed) ? parsed : fallback;
 }
 
+function optionalBool(name: string, fallback: boolean): boolean {
+  const raw = process.env[name]?.trim().toLowerCase();
+  if (!raw) return fallback;
+  return raw === "1" || raw === "true" || raw === "yes" || raw === "on";
+}
+
 export const config = {
   adminUsername: required("ADMIN_USERNAME"),
   adminPassword: required("ADMIN_PASSWORD"),
@@ -27,6 +33,8 @@ export const config = {
   proxyPublicHost: required("PROXY_PUBLIC_HOST"),
   databasePath: optional("DATABASE_PATH", "/data/opennow-proxy.json"),
   proxyPasswdPath: optional("PROXY_PASSWD_PATH", "/data/3proxy.passwd"),
+  clientProvisionEnabled: optionalBool("CLIENT_PROVISION_ENABLED", true),
+  maxClientProvisions: optionalInt("MAX_CLIENT_PROVISIONS", 5000),
 };
 
 export function buildProxyUrl(username: string, password: string): string {
